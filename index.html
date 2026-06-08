@@ -31,9 +31,9 @@ body {
 #s-game.active {
   height: 100dvh;
   max-height: -webkit-fill-available;
-  justify-content: space-evenly;
+  justify-content: flex-start;
   padding: 6px 8px;
-  gap: 0;
+  gap: 5px;
   overflow: hidden;
   align-items: stretch;
   box-sizing: border-box;
@@ -216,7 +216,7 @@ hr.div { border: none; border-top: 1px solid rgba(255,255,255,0.14); margin: 18p
 .my-area {
   background: rgba(0,0,0,0.22); border-radius: 10px; padding: 9px 10px;
   border: 2px solid #2ecc71; position: relative;
-  flex: 0 1 auto; min-height: 0;
+  flex: 1 1 0; min-height: 0;
   display: flex; flex-direction: column; overflow: hidden;
   gap: 2px;
 }
@@ -244,16 +244,17 @@ hr.div { border: none; border-top: 1px solid rgba(255,255,255,0.14); margin: 18p
    `safe center` is the key: centres when content fits, reverts to flex-start on overflow
    so the left edge is always reachable when scrolling. No jump on card select. */
 #g-hand {
+  flex: 1 1 0;
+  min-height: 40px;
   flex-wrap: wrap;
   overflow: visible;
   padding-top: 14px;
   margin-top: -14px;
   padding-bottom: 4px;
   justify-content: center;
+  align-content: center;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
-  flex-shrink: 0;
-  min-height: 40px;
 }
 #g-hand::-webkit-scrollbar { display: none; }
 
@@ -2475,35 +2476,36 @@ function renderMy(mi, isTurn) {
         <div class="bc"><div class="cr">${rl(c.r)}</div><div class="cs">${SYM[c.s]}</div></div>
       </div>`;
     }).join('');
-    // Responsive card scaling: shrink cards to fit screen width
-    requestAnimationFrame(() => {
+    // Responsive card scaling: fills available space (scales UP and DOWN)
+    const scaleHandCards = () => {
       const cards = handEl.querySelectorAll('.card');
       const n = cards.length;
       if (!n) return;
-      const avail = (handEl.parentElement ? handEl.parentElement.clientWidth : window.innerWidth) - 20;
-      const gap = 5;
-      const isTinyPhone = window.innerWidth <= 360;
+      const isTiny   = window.innerWidth <= 360;
       const isMobile = window.innerWidth <= 480;
-      const naturalW = isTinyPhone ? 38 : isMobile ? 46 : 58;
-      const naturalH = isTinyPhone ? 54 : isMobile ? 66 : 82;
-      const needed = n * naturalW + (n - 1) * gap;
-      if (needed <= avail) {
-        // All fits — reset to natural size
-        cards.forEach(c => { c.style.width=''; c.style.height=''; c.style.fontSize=''; });
-        return;
-      }
-      // Scale down to fit in one row
-      let w = Math.floor((avail - gap * (n - 1)) / n);
-      const minW = 28;
-      if (w < minW) w = minW; // floor — still tappable
-      const h = Math.round(w * naturalH / naturalW);
+      const gap = 5;
+      const aspectH = 82 / 58; // card height/width ratio
+      const naturalW = isTiny ? 38 : isMobile ? 46 : 58;
+      const maxW     = isMobile ? 90 : 120; // cap so cards don't get absurd on desktop
+      // Width budget: fit all n cards in one row
+      const availW = (handEl.parentElement ? handEl.parentElement.clientWidth : window.innerWidth) - 20;
+      const wFromWidth = Math.floor((availW - gap * (n - 1)) / n);
+      // Height budget: card height should fill the hand container
+      const availH = handEl.clientHeight > 40 ? handEl.clientHeight - 16 : 0;
+      const wFromHeight = availH > 0 ? Math.floor(availH / aspectH) : wFromWidth;
+      // Use tightest constraint, capped at maxW, floored at 28px
+      let w = Math.min(wFromWidth, wFromHeight, maxW);
+      w = Math.max(w, 28);
+      const h = Math.round(w * aspectH);
       const fScale = w / naturalW;
       cards.forEach(c => {
-        c.style.width = w + 'px';
+        c.style.width  = w + 'px';
         c.style.height = h + 'px';
         c.style.fontSize = (fScale * (isMobile ? 0.75 : 0.82)) + 'rem';
       });
-    });
+    };
+    // Double-RAF: first ensures layout reflow, second reads clientHeight correctly
+    requestAnimationFrame(() => requestAnimationFrame(scaleHandCards));
   } else {
     handEl.innerHTML=src?'<span style="font-size:0.8rem;opacity:0.4">Hand empty</span>':
       me.won?'<span style="color:#FFD700;font-size:0.9rem">🏆 All done!</span>':'';
