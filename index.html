@@ -218,6 +218,7 @@ hr.div { border: none; border-top: 1px solid rgba(255,255,255,0.14); margin: 18p
   border: 2px solid #2ecc71; position: relative;
   flex: 1 1 0; min-height: 0;
   display: flex; flex-direction: column; overflow: hidden;
+  gap: 2px;
 }
 /* my-top: avatar + name on row 1 (sort button right-aligned); source label wraps to row 2 */
 .my-top {
@@ -238,7 +239,7 @@ hr.div { border: none; border-top: 1px solid rgba(255,255,255,0.14); margin: 18p
 .sec-lbl { font-size: 0.65rem; opacity: 0.5; text-align: center; margin-bottom: 3px; letter-spacing: 1px; flex-shrink: 0; }
 .cards-row { display: flex; gap: 5px; justify-content: center; flex-wrap: wrap; align-items: flex-end; }
 /* Fixed min-height on action row prevents the player box jumping */
-.action-row { display: flex; gap: 5px; flex-wrap: wrap; margin-top: auto; padding-top: 6px; justify-content: center; min-height: 36px; align-items: center; flex-shrink: 0; }
+.action-row { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 6px; justify-content: center; min-height: 36px; align-items: center; flex-shrink: 0; }
 /* Hand: horizontal scroll — cards stay centred when few, scroll from left when many.
    `safe center` is the key: centres when content fits, reverts to flex-start on overflow
    so the left edge is always reachable when scrolling. No jump on card select. */
