@@ -15,6 +15,7 @@
   --cb-b: #c0392b;
 }
 
+html, body { overflow: hidden; height: 100%; }
 body {
   background: var(--felt);
   background-image:
@@ -29,7 +30,7 @@ body {
 .screen.active { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; min-height: 100vh; }
 #s-game { min-height: unset !important; }
 #s-game.active {
-  height: 100dvh; max-height: -webkit-fill-available;
+  position: fixed; inset: 0;
   justify-content: flex-start; padding: 6px 8px; gap: 5px;
   overflow: hidden; align-items: stretch; box-sizing: border-box;
 }
@@ -201,7 +202,7 @@ hr.div { border: none; border-top: 1px solid rgba(255,255,255,0.14); margin: 18p
 .deck-txt { font-size: 0.75rem; opacity: 0.7; white-space: nowrap; }
 .dir-badge { font-size: 0.7rem; opacity: 0.6; background: rgba(255,255,255,0.1); padding: 3px 7px; border-radius: 5px; white-space: nowrap; }
 .others-row { display: flex; gap: 5px; justify-content: center; flex-wrap: nowrap; align-items: stretch; flex-shrink: 0; }
-.op-area { background: rgba(0,0,0,0.2); border-radius: 9px; padding: 6px 8px; min-width: 0; flex: 1 1 0; position: relative; }
+.op-area { background: rgba(0,0,0,0.2); border-radius: 9px; padding: 6px 8px; min-width: 0; flex: 1 1 0; position: relative; overflow: hidden; }
 .op-area.myturn { border: 2px solid #FFD700; }
 .op-name { font-size: 0.72rem; text-align: center; margin-bottom: 5px; opacity: 0.85; }
 .center-row { display: flex; justify-content: center; align-items: center; gap: 28px; padding: 7px 12px; background: rgba(0,0,0,0.15); border-radius: 10px; flex-shrink: 0; }
@@ -239,7 +240,8 @@ hr.div { border: none; border-top: 1px solid rgba(255,255,255,0.14); margin: 18p
    so the left edge is always reachable when scrolling. No jump on card select. */
 #g-hand {
   flex-wrap: wrap;
-  overflow: visible;
+  overflow-x: clip;
+  overflow-y: visible;
   padding-top: 16px;
   margin-top: -16px;
   padding-bottom: 6px;
@@ -2381,6 +2383,21 @@ function renderOthers(mi) {
         ${handHTML}
       </div>`;
     el.appendChild(div);
+  });
+  // Scale down opponent card areas that overflow their box
+  requestAnimationFrame(() => {
+    document.querySelectorAll('.op-area').forEach(area => {
+      const inner = area.querySelector('[style*="display:flex"][style*="gap:8px"]');
+      if (!inner) return;
+      inner.style.transform = '';
+      const avail = area.clientWidth - 12;
+      const actual = inner.scrollWidth;
+      if (actual > avail && avail > 0) {
+        const s = Math.max(0.5, avail / actual);
+        inner.style.transform = `scale(${s.toFixed(3)})`;
+        inner.style.transformOrigin = 'top center';
+      }
+    });
   });
 }
 
