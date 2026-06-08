@@ -209,7 +209,7 @@ hr.div { border: none; border-top: 1px solid rgba(255,255,255,0.14); margin: 18p
 .op-area { background: rgba(0,0,0,0.2); border-radius: 9px; padding: 6px 8px; min-width: 0; flex: 1 1 0; position: relative; }
 .op-area.myturn { border: 2px solid #FFD700; }
 .op-name { font-size: 0.72rem; text-align: center; margin-bottom: 5px; opacity: 0.85; }
-.center-row { display: flex; justify-content: center; align-items: center; gap: 28px; padding: 7px 12px; background: rgba(0,0,0,0.15); border-radius: 10px; flex-shrink: 0; }
+.center-row { display: flex; justify-content: center; align-items: center; gap: 28px; padding: 7px 12px; background: rgba(0,0,0,0.15); border-radius: 10px; flex-shrink: 0; isolation: isolate; }
 .pile-box { display: flex; flex-direction: column; align-items: center; gap: 4px; }
 .pile-lbl { font-size: 0.68rem; opacity: 0.55; letter-spacing: 1px; text-transform: uppercase; }
 .pile-sub { font-size: 0.72rem; opacity: 0.75; text-align: center; min-height: 16px; }
@@ -219,6 +219,8 @@ hr.div { border: none; border-top: 1px solid rgba(255,255,255,0.14); margin: 18p
   flex: 1 1 0; min-height: 0;
   display: flex; flex-direction: column; overflow: hidden;
   gap: 2px;
+  isolation: isolate;
+  z-index: 1;
 }
 /* my-top: avatar + name on row 1 (sort button right-aligned); source label wraps to row 2 */
 .my-top {
@@ -245,7 +247,7 @@ hr.div { border: none; border-top: 1px solid rgba(255,255,255,0.14); margin: 18p
    so the left edge is always reachable when scrolling. No jump on card select. */
 #g-hand {
   flex: 1 1 0;
-  min-height: 40px;
+  min-height: 50px;
   flex-wrap: wrap;
   overflow: visible;
   padding-top: 14px;
@@ -2287,6 +2289,11 @@ function renderGameScreen() {
   }
   pileEl.innerHTML = pileHTML;
   lastPileKey = pileKey;
+  // Clear lastPlayedCards after stagger animation completes (prevents flash on re-render)
+  if (multiN > 1 && anim) {
+    const clearDelay = (multiN * 280 + 500);
+    setTimeout(() => { if (G) G.lastPlayedCards = []; }, clearDelay);
+  }
 
   const ccOverlay = document.getElementById('center-card-overlay');
   const ccInner   = document.getElementById('center-card-inner');
@@ -2476,36 +2483,31 @@ function renderMy(mi, isTurn) {
         <div class="bc"><div class="cr">${rl(c.r)}</div><div class="cs">${SYM[c.s]}</div></div>
       </div>`;
     }).join('');
-    // Responsive card scaling: fills available space (scales UP and DOWN)
-    const scaleHandCards = () => {
+    // Responsive: only scale DOWN when too many cards to fit in one row
+    requestAnimationFrame(() => {
       const cards = handEl.querySelectorAll('.card');
       const n = cards.length;
       if (!n) return;
-      const isTiny   = window.innerWidth <= 360;
       const isMobile = window.innerWidth <= 480;
+      const isTiny   = window.innerWidth <= 360;
       const gap = 5;
-      const aspectH = 82 / 58; // card height/width ratio
       const naturalW = isTiny ? 38 : isMobile ? 46 : 58;
-      const maxW     = isMobile ? 90 : 120; // cap so cards don't get absurd on desktop
-      // Width budget: fit all n cards in one row
+      const naturalH = isTiny ? 54 : isMobile ? 66 : 82;
       const availW = (handEl.parentElement ? handEl.parentElement.clientWidth : window.innerWidth) - 20;
-      const wFromWidth = Math.floor((availW - gap * (n - 1)) / n);
-      // Height budget: card height should fill the hand container
-      const availH = handEl.clientHeight > 40 ? handEl.clientHeight - 16 : 0;
-      const wFromHeight = availH > 0 ? Math.floor(availH / aspectH) : wFromWidth;
-      // Use tightest constraint, capped at maxW, floored at 28px
-      let w = Math.min(wFromWidth, wFromHeight, maxW);
-      w = Math.max(w, 28);
-      const h = Math.round(w * aspectH);
+      const needed = n * naturalW + (n - 1) * gap;
+      if (needed <= availW) {
+        cards.forEach(c => { c.style.width=''; c.style.height=''; c.style.fontSize=''; });
+        return;
+      }
+      let w = Math.max(28, Math.floor((availW - gap * (n - 1)) / n));
+      const h = Math.round(w * naturalH / naturalW);
       const fScale = w / naturalW;
       cards.forEach(c => {
-        c.style.width  = w + 'px';
+        c.style.width = w + 'px';
         c.style.height = h + 'px';
         c.style.fontSize = (fScale * (isMobile ? 0.75 : 0.82)) + 'rem';
       });
-    };
-    // Double-RAF: first ensures layout reflow, second reads clientHeight correctly
-    requestAnimationFrame(() => requestAnimationFrame(scaleHandCards));
+    });
   } else {
     handEl.innerHTML=src?'<span style="font-size:0.8rem;opacity:0.4">Hand empty</span>':
       me.won?'<span style="color:#FFD700;font-size:0.9rem">🏆 All done!</span>':'';
